@@ -2,20 +2,51 @@ from tkinter import *
 from tkinter import ttk
 import requests
 
+def show_alert(title, message, temp=None):
+    alert_window = Toplevel(win)
+    alert_window.title(title)
+    alert_window.geometry("400x200")
+    alert_window.config(bg="#FF5252")
+    alert_window.resizable(False, False)
+    alert_window.transient(win)
+    alert_window.grab_set()
+
+    msg_label = Label(alert_window, text=message, font=("Segoe UI", 14, "bold"), fg="white", bg="#FF5252", wraplength=350)
+    msg_label.pack(pady=20)
+
+    if temp is not None:
+        temp_label = Label(alert_window, text=f"Temperature: {temp}°C", font=("Segoe UI", 12), fg="white", bg="#FF5252")
+        temp_label.pack(pady=10)
+
+    close_btn = Button(alert_window, text="OK", font=("Segoe UI", 11, "bold"), command=alert_window.destroy, bg="#FF6B6B", fg="white", width=15)
+    close_btn.pack(pady=10)
+
 def get_weather():
-    city=city_name.get()
+    city = city_name.get().strip()
     if not city:
-        w_label1.config(text="Please select a city")
+        w_label1.config(text="Enter city or select a state")
+        wb_label1.config(text="")
+        temp_label1.config(text="--")
+        per_label1.config(text="--")
         return
+
     try:
-        data = requests.get("https://api.openweathermap.org/data/2.5/weather?q="+city+"&appid=c388cc150ed05ef9537a21cf340dfcb4").json()
+        response = requests.get("https://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=c388cc150ed05ef9537a21cf340dfcb4")
+        data = response.json()
+        if response.status_code != 200 or data.get("cod") != 200:
+            raise ValueError(data.get("message", "City not found"))
+
         w_label1.config(text=data["weather"][0]["main"])
         wb_label1.config(text=data["weather"][0]["description"])
-        temp_label1.config(text=str(int(data["main"]["temp"]-273.15)) + "°C")
+        temp = int(data["main"]["temp"] - 273.15)
+        temp_label1.config(text=str(temp) + "°C")
         per_label1.config(text=str(data["main"]["pressure"]) + " hPa")
-    except:
+
+        if temp > 30:
+            show_alert("⚠️ TEMPERATURE ALERT!", f"Temperature exceeded 30°C limit!\nCurrent: {temp}°C", temp)
+    except Exception as e:
         w_label1.config(text="Error")
-        wb_label1.config(text="City not found")
+        wb_label1.config(text=str(e).capitalize())
         temp_label1.config(text="--")
         per_label1.config(text="--")
 
@@ -68,12 +99,14 @@ city_label = Label(
 city_label.place(x=25, y=130, height=30, width=600)
 
 # Combobox
-city_name=StringVar()
+city_name = StringVar()
 style = ttk.Style()
 style.theme_use('clam')
-style.configure('TCombobox', fieldbackground="#2a2a3e", background="#2a2a3e")
+style.configure('TCombobox', fieldbackground="#2a2a3e", background="#2a2a3e", foreground="#FFFFFF")
+style.map('TCombobox', fieldbackground=[('!disabled', '#2a2a3e')], foreground=[('!disabled', '#FFFFFF')])
 com = ttk.Combobox(win, values=list_name,
-    font=("Segoe UI", 12, "bold"),textvariable=city_name, state="readonly")
+    font=("Segoe UI", 12, "bold"), textvariable=city_name, state="normal")
+com.configure(foreground="#FFFFFF")
 com.place(x=25, y=165, height=45, width=600)
 
 # Done Button
